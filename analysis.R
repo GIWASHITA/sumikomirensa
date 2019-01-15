@@ -1,0 +1,75 @@
+#ステップごとの（種数・状態数）の変化を求める入力されるのは(ステップ、提供種の状態の名前、提供種の状態の存在量)
+#または、（ステップ、利用種の名前、利用種の存在量）の
+syusyuu<-function(y){
+  time<-unique(y[,1])
+  t<-length(time)
+  sdata<-c(0)
+  for(i in 1:t){
+    timeda<-y[y[,1]==time[i],]
+    x<-timeda[,2]
+    news<-length(x)
+    sdata<-c(sdata,news)
+  }
+  s<-sdata[-1]
+  outcom<-list(time=time,s=s)
+  return(outcom)
+}
+#十進数になったビットを元に戻す,
+dpconvert<-function(x){
+  s<-length(x)
+  p<-matrix(0,s,8)
+  for(i in 1:s){
+    po<-as.integer(intToBits(x[i])[8:1])
+    p[i,]<-matrix(po,1,8)
+  }
+  return(p)
+}
+#重み付き居住ネットワーク
+wsm<-function(pvec,evec,en){
+  n<-length(pvec)
+  m<-length(evec)
+  p<-dpconvert(pvec)
+  sum_en<-sum(en)
+  wmat<-matrix(0,nrow=m,ncol=n)
+  tmat<-matrix(0,nrow=m,ncol=n)
+  no<-c(1:n)
+  e<-dpconvert(evec)
+  i<-1
+  while(i<=m){#バイナリーネットワークの隣接行列を作る
+    j<-colSums(t(p)==e[i,])
+    cj<- j>=5
+    dtf<-data.frame(no,cj)
+    ck<-grep(TRUE,dtf$cj)
+    wmat[i,ck]<-1*en[i]/sum_en
+    tmat[i,ck]<-1
+    i<-i+1
+  }
+  sm<-t(wmat)%*%tmat
+  diag(sm)<-0
+  cutval<-quantile(sm[upper.tri(sm)],probs=0.75)
+  sm<-ifelse(sm>=cutval,1,0)
+  return(sm)
+}
+#ネットワークのグループ数を求める
+library(igraph)
+cwcs<-function(estate,pstate){
+  time<-unique(estate[,1])
+  s<-length(time)
+  cs<-1
+  for(i in 2:s){
+    timede<-estate[estate[,1]==time[i],]
+    timedp<-pstate[pstate[,1]==time[i],]
+    evec<-timede[,2]
+    pvec<-timedp[,2]
+    en<-timede[,3]
+    sm<-wsm(pvec=pvec,evec=evec,en=en)
+    g<-graph.adjacency(sm,mode="undirected",weighted=NULL)
+    data<-fastgreedy.community(g)
+    pcs<-length(data)
+    cs<-c(cs,pcs)
+  }
+  outcom<-list(time=time,cs=cs,g=g,sm=sm)
+  return(outcom)
+}
+
+

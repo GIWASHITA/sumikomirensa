@@ -1,0 +1,469 @@
+#ニッチの行列を競争係数の行列に帰る
+ncchange<-function(p){
+  s<-nrow(p)
+  t<-ncol(p)
+  a<-matrix(0,nrow=s,ncol=s)
+  for(i in 1:s){
+    for(k in i:s){
+      a[i,k]<-sum(p[i,]==p[k,])/t
+      a[k,i]<-a[i,k]
+    }
+  }
+  diag(a)<-1
+  return(a)
+}
+#利用種が環境を変えるランダム
+sechange<-function(p,e,en,pn,mu){
+  s<-nrow(p)
+  newe<-e
+  newce<-e
+  t<-nrow(e)
+  ck<-c(1:8)
+  for(i in 1:s){
+    #変化させる候補を選ぶ
+    pvec<-p[i,]
+    ci<-colSums(t(e)==pvec)
+    j<- ci>=5
+    count<-which(j)
+  if(length(count)!=0){#変化させる候補がある場合
+     d<-en[count]
+     l<-sample(x=count,size=1,prob=d)
+     ku<-sample(ck,1)#選ばれた候補のどの部分を変化させるかみる
+     newe[l,ku]<-(2*e[l,ku]-1)*(e[l,ku]-1)
+     newevec<-newe[l,]
+     ab<-numeric(1)
+     ab[1]<-pn[i]
+     output<-nechange(e=newce,newevec=newevec,l=l,en=en,pn=ab,mu=mu)#実際に存在量を変化させる
+     newce<-output$e
+     en<-output$en
+     newe<-e
+  }
+  } 
+   outcom<-list(en=en,e=newce)
+  return(outcom)
+}
+#利用種が環境を変える好適
+sechange2<-function(p,e,en,pn,mu){
+  s<-nrow(p)
+  newe<-e
+  newce<-e
+  t<-nrow(e)
+  ck<-c(1:8)
+  for(i in 1:s){
+    #変化させる候補を選ぶ
+    pvec<-p[i,]
+    ci<-colSums(t(e)==pvec)
+    j<- ci>=5
+    count<-which(j)
+    if(length(count)!=0){#変化させる候補がある場合
+      d<-en[count]
+      l<-sample(x=count,size=1,prob=d)
+      evec<-e[l,]
+      cpe<-evec==pvec
+      choicetable<-ifelse(cpe,0.1,0.9)
+      ku<-sample(ck,1,prob=choicetable)#選ばれた候補のどの部分を変化させるかみる
+      newe[l,ku]<-(2*e[l,ku]-1)*(e[l,ku]-1)
+      newevec<-newe[l,]
+      ab<-numeric(1)
+      ab[1]<-pn[i]
+      output<-nechange(e=newce,newevec=newevec,l=l,en=en,pn=ab,mu=mu)#実際に存在量を変化させる
+      newce<-output$e
+      en<-output$en
+      newe<-e
+    }
+  } 
+  outcom<-list(en=en,e=newce)
+  return(outcom)
+}
+#利用種が環境を変える(不適)
+sechange3<-function(p,e,en,pn,mu){
+  s<-nrow(p)
+  newe<-e
+  newce<-e
+  t<-nrow(e)
+  ck<-c(1:8)
+  for(i in 1:s){
+    #変化させる候補を選ぶ
+    pvec<-p[i,]
+    ci<-colSums(t(e)==pvec)
+    j<- ci>=5
+    count<-which(j)
+    if(length(count)!=0){#変化させる候補がある場合
+      d<-en[count]
+      l<-sample(x=count,size=1,prob=d)
+      evec<-e[l,]
+      cpe<-evec==pvec
+      choicetable<-ifelse(cpe,0.9,0.1)
+      ku<-sample(ck,1,prob=choicetable)#選ばれた候補のどの部分を変化させるかみる
+      newe[l,ku]<-(2*e[l,ku]-1)*(e[l,ku]-1)
+      newevec<-newe[l,]
+      ab<-numeric(1)
+      ab[1]<-pn[i]
+      output<-nechange(e=newce,newevec=newevec,l=l,en=en,pn=ab,mu=mu)#実際に存在量を変化させる
+      newce<-output$e
+      en<-output$en
+      newe<-e
+    }
+  } 
+  outcom<-list(en=en,e=newce)
+  return(outcom)
+}
+#newe convert e
+nechange<-function(e,newevec,l,en,pn,mu){
+  #変化させる先の状態がすでに存在しているかをみる
+  s<-nrow(e)
+  tf<-t(e[])==newevec
+  ctf<-colSums(tf)
+  i<-which(ctf==8)
+  if(length(i)!=0){#変化させる先の状態がすでに存在しているとき
+      en[i]=en[i]+mu*2/pi*atan(pn)*en[l]
+      en[l]=en[l]-mu*2/pi*atan(pn)*en[l]
+  }else{#変化させる先の状態が存在していないとき
+  e<-rbind(e,newevec)
+  newen<-mu*2/pi*atan(pn)*en[l]
+  en[l]<-en[l]-mu*2/pi*atan(pn)*en[l]
+  en<-c(en,newen)
+  }
+  output<-list(en=en,e=e)
+  return(output)
+}  
+
+#増殖率を求める.
+evaluater<-function(p,e,en){
+  s<-nrow(p)
+  t<-nrow(e)
+  gd<-sum(en)
+  r<-numeric(s)
+  d<-0
+  for(i in 1:s){
+    for(k in 1:t){#好適な状態があるか、探す.
+      if(sum(p[i,]==e[k,])>=5){
+        d<-d+0.1*(sum(p[i,]==e[k,])-4)*en[k]/gd
+      }
+    }
+    if(d==0){#好適な状態が一つもないとき
+      r[i]<-0
+    }else{
+      r[i]<-1+d
+    }
+    d<-0
+  }
+  return(r)
+}
+#群集の提供種の状態の存在量の変化と利用種の存在量の変化
+cabundance<-function(en,pn,e,p,mu){
+  for(i in 1:100){
+    s<-length(pn)
+    if(s==0){
+      break
+    }
+    a<-ncchange(p)#ニッチを競争係数に置き換える
+    r<-evaluater(p=p,e=e,en=en)#利用種の増殖率
+    pnf<-matrix(pn,nrow =s,ncol=1)
+    pnt<-matrix(pn,nrow=1,ncol=s)
+    coma<-a*(pnf%*%pnt)
+    covec<-rowSums(coma)#利用種の種間競争と種内競争
+    dp<-r*pn-covec
+    pn<-pn+dp
+    prune<-res(p=p,pn=pn)#利用種の存在量が10^(-6)以下のときに群集から絶滅する
+    if(length(prune$pn)!=0){#利用種が群集に存在するか
+    outcom<-sechange(p=prune$p,e=e,en=en,pn=prune$pn,mu=mu)
+    e<-outcom$e
+    en<-outcom$en
+    }
+    p<-prune$p
+    pn<-prune$pn
+  }
+  output<-list(en=en,pn=pn,e=e,p=p)
+  return(output)
+}
+
+#存在量の変化
+cabundance2<-function(en,pn,e,p,mu){
+  for(i in 1:100){
+    s<-length(pn)
+    if(s==0){
+      break
+    }
+    a<-ncchange(p)#ニッチを競争係数に置き換える
+    r<-evaluater(p=p,e=e,en=en)#利用種の増殖率
+    pnf<-matrix(pn,nrow =s,ncol=1)
+    pnt<-matrix(pn,nrow=1,ncol=s)
+    coma<-a*(pnf%*%pnt)
+    covec<-rowSums(coma)#利用種の種間競争と種内競争
+    dp<-r*pn-covec
+    pn<-pn+dp
+    prune<-res(p=p,pn=pn)#利用種の存在量が10^(-6)以下のときに群集から絶滅する
+    if(length(prune$pn)!=0){#利用種が群集に存在するか
+      outcom<-sechange2(p=prune$p,e=e,en=en,pn=prune$pn,mu=mu)
+      e<-outcom$e
+      en<-outcom$en
+    }
+    p<-prune$p
+    pn<-prune$pn
+  }
+  output<-list(en=en,pn=pn,e=e,p=p)
+  return(output)
+}
+#存在量の変化 不適
+cabundance3<-function(en,pn,e,p,mu){
+  for(i in 1:100){
+    s<-length(pn)
+    if(s==0){
+      break
+    }
+    a<-ncchange(p)#ニッチを競争係数に置き換える
+    r<-evaluater(p=p,e=e,en=en)#利用種の増殖率
+    pnf<-matrix(pn,nrow =s,ncol=1)
+    pnt<-matrix(pn,nrow=1,ncol=s)
+    coma<-a*(pnf%*%pnt)
+    covec<-rowSums(coma)#利用種の種間競争と種内競争
+    dp<-r*pn-covec
+    pn<-pn+dp
+    prune<-res(p=p,pn=pn)#利用種の存在量が10^(-6)以下のときに群集から絶滅する
+    if(length(prune$pn)!=0){#利用種が群集に存在するか
+      outcom<-sechange3(p=prune$p,e=e,en=en,pn=prune$pn,mu=mu)
+      e<-outcom$e
+      en<-outcom$en
+    }
+    p<-prune$p
+    pn<-prune$pn
+  }
+  output<-list(en=en,pn=pn,e=e,p=p)
+  return(output)
+}
+
+#remove extinction species
+res<-function(p,pn){
+  s<-length(pn)
+  tpn<- pn<10^(-3)
+  rnum<-which(tpn)
+  if(length(rnum)!=0){#基準を満たす利用種が存在するとき
+  newp<-p[-rnum,]
+  newpn<-pn[-rnum]
+  }else{#存在しないとき
+    newp<-p
+    newpn<-pn
+  }
+  output<-list(p=newp,pn=newpn)
+  return(output)
+}
+#群集の中に存在していない種が新しい種の候補になる
+nspe<-function(s,p){
+  community_species<-translatebd(p)
+  all_pool_species<-c(0:2^s-1)
+  candidate<-setdiff(all_pool_species,community_species)
+  newp<-sample(candidate,1)
+  newpvec<-as.integer(intToBits(newp)[s:1])
+  np<-rbind(p,newpvec)
+  return(np)
+}
+#新しい種が群集に入ってこれるか判定する
+jins<-function(pn,avec,newr){
+  judge<-newr-avec%*%pn
+  if(judge>0){
+    j<-1
+  }else{
+    j<-0
+  }
+  return(j)
+}
+#新しい種を群集に加える.
+adnewspecies<-function(p,pn,e,en){
+  j<-0
+  t<-length(pn)
+  count<-1#定常状態対策
+if(t<256){
+  while((j==0)&&(count<10)){
+    count<-count+1
+    newp<-nspe(8,p)
+    a<-ncchange(newp)
+    avec<-a[t+1,]
+    pnew<-c(pn,0)
+    newrvec<-evaluater(p=newp,e=e,en=en)
+    newr<-newrvec[t+1]
+    j<-jins(pn=pnew,avec=avec,newr=newr)#加入条件を満たすとj<-1になる
+  }
+  if(count==10){#新しく入れる種がないとき
+    outcom<-list(p=p,pn=pn)
+    }else{
+      pn<-c(pn,0.01)
+      outcom<-list(p=newp,pn=pn)
+   }
+}else{
+    outcom<-list(p=p,pn=pn)}
+  return(outcom)
+}
+#二進数を十進すうに直す
+translatebd<-function(e){
+  n<-e[,1]*128+e[,2]*64+e[,3]*32+e[,4]*16+e[,5]*8+e[,6]*4+e[,7]*2+e[,8]
+  return(n)
+}
+#初期条件
+initial<-function(){
+  e1<-rep(0,8)
+  e<-matrix(e1,nrow=1,ncol=8)
+  en<-1000
+  j<-0
+  while(j==0){
+    newp<-sample(c(0:1),8,replace=T)
+    if(sum(newp)<=3){#何も改変されていない状態e0=[0,0,0,0,0,0,0,0]と5こ以上一致している利用種のニッチを探す
+      j<-1
+    }
+  }
+  p<-matrix(newp,nrow=1,ncol=8)
+  pn<-0.01
+  outcom<-list(e=e,en=en,p=p,pn=pn)
+  return(outcom)
+}
+#(ステップ、提供種の状態の名前、提供種の状態の存在量)、（ステップ、利用種の名前、利用種の存在量）のリス作る
+cstate<-function(e,p,en,pn,time){
+  ei<-translatebd(e)
+  pi<-translatebd(p)
+  s<-length(en)
+  t<-length(pn)
+  a<-rep(time,s)
+  b<-rep(time,t)
+  estat<-matrix(a,nrow=s,ncol=1)
+  pstat<-matrix(b,nrow=t,ncol=1)
+  estate<-cbind(estat,ei)
+  estate<-cbind(estate,en)
+  pstate<-cbind(pstat,pi)
+  pstate<-cbind(pstate,pn)
+  outcom<-list(estate=estate,pstate=pstate)
+  return(outcom)
+}
+
+#環境を改変させるとき
+assembly<-function(mu){
+  community<-initial()
+  time<-0
+  community<-cabundance(en=community$en,pn=community$pn,e=community$e,p=community$p,mu=mu)#存在量の変化
+  com<-cstate(e=community$e,p=community$p,en=community$en,pn=community$pn,time=time)#リストを作る229行目参照
+  estate<-com$estate
+  pstate<-com$pstate
+  count<-1
+  while(count<=1000){#何ステップくりかえすか
+    count<-count+1
+    time<-time+1
+    newcomp<-adnewspecies(p=community$p,pn=community$pn,e=community$e,en=community$en)#新しい利用種を加える
+    community<-cabundance(en=community$en,pn=newcomp$pn,e=community$e,p=newcomp$p,mu=mu)#存在量の変化
+    if(length(community$pn)==0){#利用種が絶滅したときには提供種の状態はそのままで利用種を入れ直す
+      newcommunity<-initial()
+      community$p<-newcommunity$p
+      community$pn<-newcommunity$pn
+    }
+      com<-cstate(e=community$e,p=community$p,en=community$en,pn=community$pn,time=time)
+      estate<-merge(estate,com$estate,all=T)#結果のリストを作る(提供種)
+      pstate<-merge(pstate,com$pstate,all=T)#結果のリストを作る（利用種）
+    
+  }
+  outcom<-list(estate=estate,pstate=pstate)
+  return(outcom)
+}
+#環境を改変させるとき好適
+assembly2<-function(mu){
+  community<-initial()
+  time<-0
+  community<-cabundance2(en=community$en,pn=community$pn,e=community$e,p=community$p,mu=mu)#存在量の変化
+  com<-cstate(e=community$e,p=community$p,en=community$en,pn=community$pn,time=time)#リストを作る229行目参照
+  estate<-com$estate
+  pstate<-com$pstate
+  count<-1
+  while(count<=1000){#何ステップくりかえすか
+    count<-count+1
+    time<-time+1
+    newcomp<-adnewspecies(p=community$p,pn=community$pn,e=community$e,en=community$en)#新しい利用種を加える
+    community<-cabundance2(en=community$en,pn=newcomp$pn,e=community$e,p=newcomp$p,mu=mu)#存在量の変化
+    if(length(community$pn)==0){#利用種が絶滅したときには提供種の状態はそのままで利用種を入れ直す
+      newcommunity<-initial()
+      community$p<-newcommunity$p
+      community$pn<-newcommunity$pn
+    }
+    com<-cstate(e=community$e,p=community$p,en=community$en,pn=community$pn,time=time)
+    estate<-merge(estate,com$estate,all=T)#結果のリストを作る(提供種)
+    pstate<-merge(pstate,com$pstate,all=T)#結果のリストを作る（利用種）
+    
+  }
+  outcom<-list(estate=estate,pstate=pstate)
+  return(outcom)
+}
+#環境を改変させるとき不適
+assembly3<-function(mu){
+  community<-initial()
+  time<-0
+  community<-cabundance3(en=community$en,pn=community$pn,e=community$e,p=community$p,mu=mu)#存在量の変化
+  com<-cstate(e=community$e,p=community$p,en=community$en,pn=community$pn,time=time)#リストを作る229行目参照
+  estate<-com$estate
+  pstate<-com$pstate
+  count<-1
+  while(count<=300){#何ステップくりかえすか
+    count<-count+1
+    time<-time+1
+    newcomp<-adnewspecies(p=community$p,pn=community$pn,e=community$e,en=community$en)#新しい利用種を加える
+    community<-cabundance3(en=community$en,pn=newcomp$pn,e=community$e,p=newcomp$p,mu=mu)#存在量の変化
+    if(length(community$pn)==0){#利用種が絶滅したときには提供種の状態はそのままで利用種を入れ直す
+      newcommunity<-initial()
+      community$p<-newcommunity$p
+      community$pn<-newcommunity$pn
+    }
+    com<-cstate(e=community$e,p=community$p,en=community$en,pn=community$pn,time=time)
+    estate<-merge(estate,com$estate,all=T)#結果のリストを作る(提供種)
+    pstate<-merge(pstate,com$pstate,all=T)#結果のリストを作る（利用種）
+    
+  }
+  outcom<-list(estate=estate,pstate=pstate)
+  return(outcom)
+}
+#存在量の変化（環境が変わる場合）
+ncabundance<-function(en,pn,e,p){
+  for(i in 1:100){
+    s<-length(pn)
+    if(s==0){
+      break
+    }
+    a<-ncchange(p)
+    se<-sum(en)
+    r<-evaluater(p=p,e=e,en=en)
+    pnf<-matrix(pn,nrow =s,ncol=1)
+    pnt<-matrix(pn,nrow=1,ncol=s)
+    coma<-a*(pnf%*%pnt)
+    covec<-rowSums(coma)
+    dp<-r*pn-covec-0.1*pn
+    pn<-pn+dp
+    prune<-res(p=p,pn=pn)
+    p<-prune$p
+    pn<-prune$pn
+  }
+  output<-list(en=en,pn=pn,e=e,p=p)
+  return(output)
+}
+
+#アセンブリ（環境が変化しない)
+nassembly<-function(){
+  community<-initial()
+  time<-0
+  community<-ncabundance(en=community$en,pn=community$pn,e=community$e,p=community$p)
+  com<-cstate(e=community$e,p=community$p,en=community$en,pn=community$pn,time=time)
+  estate<-com$estate
+  pstate<-com$pstate
+  count<-1
+  while(count<=150){
+    count<-count+1
+    time<-time+1
+    newcomp<-adnewspecies(p=community$p,pn=community$pn,e=community$e,en=community$en)
+    community<-ncabundance(en=community$en,pn=newcomp$pn,e=community$e,p=newcomp$p)
+    if(length(community$pn)==0){
+      newcommunity<-initial()
+      community$p<-newcommunity$p
+      community$pn<-newcommunity$pn
+    }
+    com<-cstate(e=community$e,p=community$p,en=community$en,pn=community$pn,time=time)
+    estate<-merge(estate,com$estate,all=T)
+    pstate<-merge(pstate,com$pstate,all=T)
+    
+  }
+  outcom<-list(estate=estate,pstate=pstate,p=community$p)
+  return(outcom)
+}
+
